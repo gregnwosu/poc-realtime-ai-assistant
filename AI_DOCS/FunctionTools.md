@@ -1,9 +1,10 @@
-Function Tools
+# Function Tools
+
 Function tools provide a mechanism for models to retrieve extra information to help them generate a response.
 
 They're useful when it is impractical or impossible to put all the context an agent might need into the system prompt, or when you want to make agents' behavior more deterministic or reliable by deferring some of the logic required to generate a response to another (not necessarily AI-powered) tool.
 
-Function tools vs. RAG
+## Function Tools vs. RAG
 
 Function tools are basically the "R" of RAG (Retrieval-Augmented Generation) — they augment what the model can do by letting it request extra information.
 
@@ -11,14 +12,16 @@ The main semantic difference between PydanticAI Tools and RAG is RAG is synonymo
 
 There are a number of ways to register tools with an agent:
 
-via the @agent.tool decorator — for tools that need access to the agent context
-via the @agent.tool_plain decorator — for tools that do not need access to the agent context
-via the tools keyword argument to Agent which can take either plain functions, or instances of Tool
-@agent.tool is considered the default decorator since in the majority of cases tools will need access to the agent context.
+- via the `@agent.tool` decorator — for tools that need access to the agent context
+- via the `@agent.tool_plain` decorator — for tools that do not need access to the agent context
+- via the `tools` keyword argument to `Agent` which can take either plain functions, or instances of `Tool`
 
-Here's an example using both:
+`@agent.tool` is considered the default decorator since in the majority of cases tools will need access to the agent context.
 
-dice_game.py
+### Example Using Both Decorators
+
+```python
+# dice_game.py
 
 import random
 
@@ -52,9 +55,10 @@ print(dice_result.data)
 #> Congratulations Anne, you guessed correctly! You're a winner!
 (This example is complete, it can be run "as is")
 
-Let's print the messages from that game to see what happened:
+### Examining the Messages
 
-dice_game_messages.py
+```python
+# dice_game_messages.py
 
 from dice_game import dice_result
 
@@ -162,10 +166,12 @@ ToolReturn
 "Anne"
 ModelResponse
 "Congratulations Anne, ..."
-Registering Function Tools via kwarg
-As well as using the decorators, we can register tools via the tools argument to the Agent constructor. This is useful when you want to re-use tools, and can also give more fine-grained control over the tools.
+## Registering Function Tools via kwarg
 
-dice_game_tool_kwarg.py
+As well as using the decorators, we can register tools via the `tools` argument to the `Agent` constructor. This is useful when you want to re-use tools, and can also give more fine-grained control over the tools.
+
+```python
+# dice_game_tool_kwarg.py
 
 import random
 
@@ -200,19 +206,23 @@ print(dice_result.data)
 #> Congratulations Anne, you guessed correctly! You're a winner!
 (This example is complete, it can be run "as is")
 
-Function Tools vs. Structured Results
+## Function Tools vs. Structured Results
+
 As the name suggests, function tools use the model's "tools" or "functions" API to let the model know what is available to call. Tools or functions are also used to define the schema(s) for structured responses, thus a model might have access to many tools, some of which call function tools while others end the run and return a result.
 
-Function tools and schema
+## Function Tools and Schema
 Function parameters are extracted from the function signature, and all parameters except RunContext are used to build the schema for that tool call.
 
 Even better, PydanticAI extracts the docstring from functions and (thanks to griffe) extracts parameter descriptions from the docstring and adds them to the schema.
 
 Griffe supports extracting parameter descriptions from google, numpy and sphinx style docstrings, and PydanticAI will infer the format to use based on the docstring. We plan to add support in the future to explicitly set the style to use, and warn/error if not all parameters are documented; see #59.
 
-To demonstrate a tool's schema, here we use FunctionModel to print the schema a model would receive:
+### Schema Example
 
-tool_schema.py
+To demonstrate a tool's schema, here we use `FunctionModel` to print the schema a model would receive:
+
+```python
+# tool_schema.py
 
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage, ModelResponse
@@ -316,21 +326,25 @@ print(test_model.agent_model_function_tools)
 """
 (This example is complete, it can be run "as is")
 
-Dynamic Function tools
-Tools can optionally be defined with another function: prepare, which is called at each step of a run to customize the definition of the tool passed to the model, or omit the tool completely from that step.
+## Dynamic Function Tools
 
-A prepare method can be registered via the prepare kwarg to any of the tool registration mechanisms:
+Tools can optionally be defined with another function: `prepare`, which is called at each step of a run to customize the definition of the tool passed to the model, or omit the tool completely from that step.
 
-@agent.tool decorator
-@agent.tool_plain decorator
-Tool dataclass
+A prepare method can be registered via the `prepare` kwarg to any of the tool registration mechanisms:
+
+- `@agent.tool` decorator
+- `@agent.tool_plain` decorator
+- `Tool` dataclass
 The prepare method, should be of type ToolPrepareFunc, a function which takes RunContext and a pre-built ToolDefinition, and should either return that ToolDefinition with or without modifying it, return a new ToolDefinition, or return None to indicate this tools should not be registered for that step.
+
+### Example: Conditional Tool Based on Value
 
 Here's a simple prepare method that only includes the tool if the value of the dependency is 42.
 
-As with the previous example, we use TestModel to demonstrate the behavior without calling a real model.
+As with the previous example, we use `TestModel` to demonstrate the behavior without calling a real model.
 
-tool_only_if_42.py
+```python
+# tool_only_if_42.py
 
 from typing import Union
 
@@ -360,11 +374,14 @@ print(result.data)
 #> {"hitchhiker":"42 a"}
 (This example is complete, it can be run "as is")
 
-Here's a more complex example where we change the description of the name parameter to based on the value of deps
+### Example: Dynamic Parameter Description
 
-For the sake of variation, we create this tool using the Tool dataclass.
+Here's a more complex example where we change the description of the name parameter based on the value of deps.
 
-customize_name.py
+For the sake of variation, we create this tool using the `Tool` dataclass.
+
+```python
+# customize_name.py
 
 from __future__ import annotations
 
