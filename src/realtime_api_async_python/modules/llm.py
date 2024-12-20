@@ -1,10 +1,13 @@
-import openai
+
 import os
 from pydantic import BaseModel
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIModel
+from typing import Type
 
 
-def structured_output_prompt(
-    prompt: str, response_format: BaseModel, llm_model: str = "gpt-4o-2024-08-06"
+async def structured_output_prompt(
+    prompt: str, response_format: Type[BaseModel], llm_model: str = "gpt-4o-2024-08-06"
 ) -> BaseModel:
     """
     Parse the response from the OpenAI API using structured output.
@@ -16,22 +19,19 @@ def structured_output_prompt(
     Returns:
         BaseModel: The parsed response from the OpenAI API.
     """
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    model = OpenAIModel(llm_model, api_key=os.getenv("OPENAI_API_KEY"))
+    agent: Agent = Agent(model, 
+                         result_type=response_format)
 
-    completion = client.beta.chat.completions.parse(
-        model=llm_model,
-        messages=[
-            {"role": "user", "content": prompt},
-        ],
-        response_format=response_format,
+    completion = await agent.run(
+        prompt,
     )
 
-    message = completion.choices[0].message
+   
 
-    if not message.parsed:
-        raise ValueError(message.refusal)
+    
 
-    return message.parsed
+    return completion.data
 
 
 def chat_prompt(prompt: str, model: str) -> str:

@@ -173,7 +173,7 @@ async def generate_diagram(prompt: str, version_count: int = 1) -> dict:
 </examples>
 """
 
-    response = structured_output_prompt(mermaid_prompt, MermaidResponse)
+    response = await structured_output_prompt(mermaid_prompt, MermaidResponse)
     base_name = response.base_name
 
     print("response", response)

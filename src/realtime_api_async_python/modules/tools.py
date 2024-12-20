@@ -51,7 +51,7 @@ async def ingest_file(prompt: str) -> dict:
     scratch_pad_dir = os.getenv("SCRATCH_PAD_DIR", "./scratchpad")
 
     # Step 1: Select the file based on the prompt
-    select_file_prompt = f"""
+    xselect_file_prompt = f"""
 <purpose>
     Select a file from the available files based on the user's prompt.
 </purpose>
@@ -70,7 +70,7 @@ async def ingest_file(prompt: str) -> dict:
 </user-prompt>
     """
 
-    file_selection_response = structured_output_prompt(
+    file_selection_response = await structured_output_prompt(
         select_file_prompt,
         FileReadResponse,
         llm_model=model_name_to_id[ModelName.fast_model],
@@ -252,7 +252,7 @@ async def open_browser(prompt: str):
     log_info(f"📖 open_browser() Prompt: {prompt_structure}", style="bold magenta")
 
     # Call the LLM to select the best-fit URL
-    response = structured_output_prompt(prompt_structure, WebUrl)
+    response = await structured_output_prompt(prompt_structure, WebUrl)
 
     log_info(f"📖 open_browser() Response: {response}", style="bold cyan")
 
@@ -315,7 +315,7 @@ async def create_file(file_name: str, prompt: str) -> dict:
     """
 
     # Call the LLM to generate the file content
-    response = structured_output_prompt(prompt_structure, CreateFileResponse)
+    response = await structured_output_prompt(prompt_structure, CreateFileResponse)
 
     # Write the generated content to the file
     with open(file_path, "w") as f:
@@ -359,7 +359,7 @@ async def update_file(prompt: str, model: ModelName = ModelName.base_model) -> d
 """
 
     # Call the LLM to select the file
-    file_selection_response = structured_output_prompt(
+    file_selection_response =await structured_output_prompt(
         select_file_prompt,
         FileSelectionResponse,
         llm_model=model_name_to_id[ModelName.fast_model],
@@ -547,7 +547,7 @@ async def generate_sql_save_to_file(prompt: str) -> dict:
 </user_prompt>
     """
 
-    response = structured_output_prompt(prompt_structure, GenerateSQLResponse)
+    response =await  structured_output_prompt(prompt_structure, GenerateSQLResponse)
 
     # Step 7: Save the generated SQL to a file
     scratch_pad_dir = os.getenv("SCRATCH_PAD_DIR", "./scratchpad")
@@ -648,7 +648,7 @@ async def generate_sql_and_execute(prompt: str) -> dict:
 </user_prompt>
     """
 
-    response = structured_output_prompt(prompt_structure, GenerateSQLResponse)
+    response = await structured_output_prompt(prompt_structure, GenerateSQLResponse)
 
     # Step 7: Execute the SQL query
     try:
@@ -708,7 +708,7 @@ async def run_sql_file(prompt: str) -> dict:
 </user-prompt>
     """
 
-    file_selection_response = structured_output_prompt(
+    file_selection_response = await structured_output_prompt(
         select_file_prompt,
         FileReadResponse,
         llm_model=model_name_to_id[ModelName.fast_model],
@@ -788,7 +788,7 @@ async def run_sql_file(prompt: str) -> dict:
         file_name: str
         output_format: OutputFormat
 
-    output_format_response = structured_output_prompt(
+    output_format_response = await structured_output_prompt(
         output_format_prompt,
         OutputFormatResponse,
         llm_model=model_name_to_id[ModelName.fast_model],
@@ -856,7 +856,7 @@ async def delete_file(prompt: str, force_delete: bool = False) -> dict:
     """
 
     # Call the LLM to select the file and determine 'force_delete'
-    file_delete_response = structured_output_prompt(
+    file_delete_response = await structured_output_prompt(
         select_file_prompt, FileDeleteResponse
     )
 
@@ -923,7 +923,7 @@ async def discuss_file(prompt: str, model: ModelName = ModelName.base_model) -> 
         """
 
         # Call the LLM to select the file
-        file_selection_response = structured_output_prompt(
+        file_selection_response = await structured_output_prompt(
             select_file_prompt,
             FileReadResponse,
             llm_model=model_name_to_id[ModelName.fast_model],
@@ -1025,7 +1025,7 @@ async def remove_variable_from_memory(prompt: str) -> dict:
 </user-prompt>
     """
 
-    key_selection_response = structured_output_prompt(
+    key_selection_response = await structured_output_prompt(
         select_key_prompt, MemoryKeyResponse
     )
 
@@ -1076,7 +1076,7 @@ async def read_file_into_memory(prompt: str) -> dict:
     """
 
     # Call the LLM to select the file
-    file_selection_response = structured_output_prompt(
+    file_selection_response = await structured_output_prompt(
         select_file_prompt,
         FileReadResponse,
         llm_model=model_name_to_id[ModelName.fast_model],
@@ -1171,7 +1171,7 @@ async def scrap_to_file_from_clipboard() -> dict:
         class FileNameResponse(BaseModel):
             file_name: str
 
-        file_name_response = structured_output_prompt(
+        file_name_response = await structured_output_prompt(
             file_name_prompt, FileNameResponse
         )
         file_name = file_name_response.file_name
@@ -1229,7 +1229,7 @@ async def clipboard_to_file() -> dict:
         class FileNameResponse(BaseModel):
             file_name: str
 
-        file_name_response = structured_output_prompt(
+        file_name_response = await structured_output_prompt(
             file_name_prompt, FileNameResponse
         )
         file_name = file_name_response.file_name
@@ -1283,7 +1283,7 @@ async def runnable_code_check(prompt: str) -> dict:
 </user-prompt>
     """
 
-    file_selection_response = structured_output_prompt(
+    file_selection_response = await structured_output_prompt(
         select_file_prompt,
         FileReadResponse,
         llm_model=model_name_to_id[ModelName.fast_model],
@@ -1325,7 +1325,7 @@ async def runnable_code_check(prompt: str) -> dict:
 {memory_content}
 """
 
-    is_runnable_response = structured_output_prompt(check_runnable_prompt, IsRunnable)
+    is_runnable_response = await structured_output_prompt(check_runnable_prompt, IsRunnable)
 
     if is_runnable_response.code_is_runnable:
         return {"status": "success", "message": "The code is runnable."}
@@ -1350,7 +1350,7 @@ async def runnable_code_check(prompt: str) -> dict:
 {memory_content}
 """
 
-    make_runnable_response = structured_output_prompt(
+    make_runnable_response = await structured_output_prompt(
         make_runnable_prompt, MakeCodeRunnableResponse
     )
 
@@ -1402,7 +1402,7 @@ async def run_python(prompt: str) -> dict:
 </user-prompt>
     """
 
-    file_selection_response = structured_output_prompt(
+    file_selection_response = await structured_output_prompt(
         select_file_prompt,
         FileReadResponse,
         llm_model=model_name_to_id[ModelName.fast_model],
@@ -1488,7 +1488,7 @@ async def create_python_chart(prompt: str, chart_type: str) -> dict:
     """
 
     # Call the LLM to select the file
-    file_selection_response = structured_output_prompt(
+    file_selection_response = await structured_output_prompt(
         select_file_prompt,
         FileReadResponse,
         llm_model=model_name_to_id[ModelName.fast_model],
