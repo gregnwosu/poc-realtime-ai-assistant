@@ -3,9 +3,24 @@ import os
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
-from typing import Type, TypeVar 
+from typing import Type, TypeVar , Any, Optional
+from async_lru import alru_cache
 
 T = TypeVar('T', bound=BaseModel)
+
+
+@alru_cache(maxsize=32)
+async def get_agent(response_format: Optional[Type[T]]=None, llm_model: str = "gpt-4o-2024-08-06") -> Agent[Any, T]:
+    model = OpenAIModel(llm_model, api_key=os.getenv("OPENAI_API_KEY"))
+    if response_format is None:
+        return Agent(model)
+    else:
+        return Agent(model, 
+                         result_type=response_format)
+
+
+
+
 async def structured_output_prompt(
     prompt: str, response_format: Type[T], llm_model: str = "gpt-4o-2024-08-06"
 ) -> T:
@@ -19,10 +34,7 @@ async def structured_output_prompt(
     Returns:
         BaseModel: The parsed response from the OpenAI API.
     """
-    model = OpenAIModel(llm_model, api_key=os.getenv("OPENAI_API_KEY"))
-    agent: Agent = Agent(model, 
-                         result_type=response_format)
-
+    agent:Agent[Any,T] = await get_agent(response_format, llm_model)
     completion = await agent.run(
         prompt,
     )
@@ -30,7 +42,7 @@ async def structured_output_prompt(
     return completion.data
 
 
-async def chat_prompt(prompt: str, model: str) -> str:
+async def chat_prompt(prompt: str, llm_model: str) -> str:
     """
     Run a chat model based on the specified model name.
 
@@ -41,18 +53,12 @@ async def chat_prompt(prompt: str, model: str) -> str:
     Returns:
         str: The assistant's response.
     """
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
-    completion = client.beta.chat.completions.parse(
-        model=model,
-        messages=[
-            {"role": "user", "content": prompt},
-        ],
+    agent:Agent[Any,str] = await get_agent( llm_model)
+    completion = await agent.run(
+        prompt,
     )
 
-    message = completion.choices[0].message
-
-    return message.content
+    return completion.data
 
 
 def parse_markdown_backticks(str) -> str:

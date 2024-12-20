@@ -24,6 +24,8 @@ dependencies = [
     "pydantic-ai>=0.0.14",
     "aiofiles>=24.1.0",
     "asyncjson>=0.0.1",
+    "cachetools>=5.5.0",
+    "async-lru>=2.0.4",
 ]
 
 [build-system]
