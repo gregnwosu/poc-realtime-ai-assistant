@@ -10,6 +10,8 @@ import pyaudio
 from firecrawl import FirecrawlApp
 import tempfile
 import subprocess
+import aiofiles 
+import asyncjson
 
 RUN_TIME_TABLE_LOG_JSON = "runtime_time_table.jsonl"
 
@@ -57,9 +59,10 @@ def timeit_decorator(func):
         }
 
         # Append the new record to the JSONL file
-        with open(jsonl_file, "a") as file:
-            json.dump(time_record, file)
-            file.write("\n")
+        async with aiofiles.open(jsonl_file, "a") as file:
+            json_data = await asyncjson.dumps(time_record)
+            await file.write(json_data)
+            await file.write("\n")
 
         return result
 
@@ -81,7 +84,7 @@ def timeit_decorator(func):
         }
 
         # Append the new record to the JSONL file
-        with open(jsonl_file, "a") as file:
+        with aiofiles.open(jsonl_file, "a") as file:
             json.dump(time_record, file)
             file.write("\n")
 

@@ -22,6 +22,8 @@ dependencies = [
     "duckdb>=1.1.2",
     "matplotlib>=3.9.2",
     "pydantic-ai>=0.0.14",
+    "aiofiles>=24.1.0",
+    "asyncjson>=0.0.1",
 ]
 
 [build-system]

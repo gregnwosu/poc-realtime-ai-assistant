@@ -51,7 +51,7 @@ async def ingest_file(prompt: str) -> dict:
     scratch_pad_dir = os.getenv("SCRATCH_PAD_DIR", "./scratchpad")
 
     # Step 1: Select the file based on the prompt
-    xselect_file_prompt = f"""
+    select_file_prompt = f"""
 <purpose>
     Select a file from the available files based on the user's prompt.
 </purpose>
@@ -70,7 +70,7 @@ async def ingest_file(prompt: str) -> dict:
 </user-prompt>
     """
 
-    file_selection_response = await structured_output_prompt(
+    file_selection_response: FileReadResponse = await structured_output_prompt(
         select_file_prompt,
         FileReadResponse,
         llm_model=model_name_to_id[ModelName.fast_model],

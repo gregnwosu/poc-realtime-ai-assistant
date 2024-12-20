@@ -3,12 +3,12 @@ import os
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from pydantic_ai.models.openai import OpenAIModel
-from typing import Type
+from typing import Type, TypeVar 
 
-
+T = TypeVar('T', bound=BaseModel)
 async def structured_output_prompt(
-    prompt: str, response_format: Type[BaseModel], llm_model: str = "gpt-4o-2024-08-06"
-) -> BaseModel:
+    prompt: str, response_format: Type[T], llm_model: str = "gpt-4o-2024-08-06"
+) -> T:
     """
     Parse the response from the OpenAI API using structured output.
 
@@ -27,14 +27,10 @@ async def structured_output_prompt(
         prompt,
     )
 
-   
-
-    
-
     return completion.data
 
 
-def chat_prompt(prompt: str, model: str) -> str:
+async def chat_prompt(prompt: str, model: str) -> str:
     """
     Run a chat model based on the specified model name.
 
