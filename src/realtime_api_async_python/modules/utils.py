@@ -12,6 +12,7 @@ import tempfile
 import subprocess
 import aiofiles 
 import asyncjson
+import base64
 
 RUN_TIME_TABLE_LOG_JSON = "runtime_time_table.jsonl"
 
@@ -37,6 +38,11 @@ model_name_to_id = {
     ModelName.sonnet_model: "claude-3-5-sonnet-20240620",
     ModelName.base_model: "gpt-4o-2024-08-06",
     ModelName.fast_model: "gpt-4o-mini",
+}
+
+from .llm import get_agent
+all_agents  = {
+    get_agent(v) for _, v in model_name_to_id.items()
 }
 
 
@@ -185,3 +191,5 @@ def run_uv_script(python_code: str) -> str:
     finally:
         # Cleanup: remove the temporary file after execution
         temp_file.close()
+def base64_encode_audio(audio_bytes):
+    return base64.b64encode(audio_bytes).decode("utf-8")

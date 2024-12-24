@@ -8,6 +8,8 @@ import argparse
 from datetime import datetime
 from dotenv import load_dotenv
 from websockets.exceptions import ConnectionClosedError
+
+from   realtime_api_async_python.modules import openai_realtime 
 from .modules.logging import log_tool_call, log_error, log_info, log_warning
 
 # Import from modules
@@ -48,8 +50,7 @@ with open(os.getenv("PERSONALIZATION_FILE"), "r") as f:
     personalization = json.load(f)
 
 
-def base64_encode_audio(audio_bytes):
-    return base64.b64encode(audio_bytes).decode("utf-8")
+
 
 
 def log_runtime(function_or_name: str, duration: float):
@@ -102,7 +103,7 @@ class RealtimeAPI:
                 ) as websocket:
                     log_info("✅ Connected to the server.", style="bold green")
 
-                    await self.initialize_session(websocket)
+                    await openai_realtime.initialize_session(websocket)
                     ws_task = asyncio.create_task(self.process_ws_messages(websocket))
 
                     logger.info(
@@ -115,7 +116,7 @@ class RealtimeAPI:
                         self.mic.start_recording()
                         logger.info("Recording started. Listening for speech...")
 
-                    await self.send_audio_loop(websocket)
+                    await self.send_audio_loop(openai_realtime.get_openai_send_audio_callback(websocket), openai_realtime.get_openai_after_recieve_callback(websocket))
 
                     logger.info("before await ws_task")
 
@@ -143,26 +144,7 @@ class RealtimeAPI:
                 self.mic.stop_recording()
                 self.mic.close()
 
-    async def initialize_session(self, websocket):
-        session_update = {
-            "type": "session.update",
-            "session": {
-                "modalities": ["text", "audio"],
-                "instructions": SESSION_INSTRUCTIONS,
-                "voice": "alloy",
-                "input_audio_format": "pcm16",
-                "output_audio_format": "pcm16",
-                "turn_detection": {
-                    "type": "server_vad",
-                    "threshold": SILENCE_THRESHOLD,
-                    "prefix_padding_ms": PREFIX_PADDING_MS,
-                    "silence_duration_ms": SILENCE_DURATION_MS,
-                },
-                "tools": tools,
-            },
-        }
-        log_ws_event("Outgoing", session_update)
-        await websocket.send(json.dumps(session_update))
+
 
     async def process_ws_messages(self, websocket):
         while True:
@@ -328,32 +310,23 @@ class RealtimeAPI:
         log_ws_event("Outgoing", response_create_event)
         await websocket.send(json.dumps(response_create_event))
 
-    async def send_audio_loop(self, websocket):
+            
+
+    async def send_audio_loop(self, callback, post_callback):
         try:
             while not self.exit_event.is_set():
                 await asyncio.sleep(0.1)  # Small delay to accumulate audio data
                 if not self.mic.is_receiving:
                     audio_data = self.mic.get_audio_data()
-                    if audio_data and len(audio_data) > 0:
-                        base64_audio = base64_encode_audio(audio_data)
-                        if base64_audio:
-                            audio_event = {
-                                "type": "input_audio_buffer.append",
-                                "audio": base64_audio,
-                            }
-                            log_ws_event("Outgoing", audio_event)
-                            await websocket.send(json.dumps(audio_event))
-                        else:
-                            logger.debug("No audio data to send")
-                else:
-                    await asyncio.sleep(0.1)  # Wait while receiving assistant response
+                    if audio_data and len(audio_data) > 0:                        
+                        await callback(audio_data)
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received. Closing the connection.")
         finally:
             self.exit_event.set()
             self.mic.stop_recording()
             self.mic.close()
-            await websocket.close()
+            await post_callback()
 
 
 def main():
