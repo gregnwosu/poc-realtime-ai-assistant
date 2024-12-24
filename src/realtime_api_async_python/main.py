@@ -8,6 +8,7 @@ import argparse
 from datetime import datetime
 from dotenv import load_dotenv
 from websockets.exceptions import ConnectionClosedError
+import asyncjson
 
 from   realtime_api_async_python.modules import openai_realtime 
 from .modules.logging import log_tool_call, log_error, log_info, log_warning
@@ -231,12 +232,12 @@ class RealtimeAPI:
             "item": {
                 "type": "function_call_output",
                 "call_id": call_id,
-                "output": json.dumps(result),
+                "output": await asyncjson.dumps(result),
             },
         }
         log_ws_event("Outgoing", function_call_output)
-        await websocket.send(json.dumps(function_call_output))
-        await websocket.send(json.dumps({"type": "response.create"}))
+        await websocket.send(await asyncjson.dumps(function_call_output))
+        await websocket.send(await asyncjson.dumps({"type": "response.create"}))
 
         # Reset function call state
         self.function_call = None
@@ -252,7 +253,7 @@ class RealtimeAPI:
             },
         }
         log_ws_event("Outgoing", error_item)
-        await websocket.send(json.dumps(error_item))
+        await websocket.send(await asyncjson.dumps(error_item))
 
     async def handle_response_done(self):
         if self.response_start_time is not None:
@@ -289,7 +290,7 @@ class RealtimeAPI:
         self.mic.stop_recording()
         logger.info("Speech ended, processing...")
         self.response_start_time = time.perf_counter()
-        await websocket.send(json.dumps({"type": "input_audio_buffer.commit"}))
+        await websocket.send(await asyncjson.dumps({"type": "input_audio_buffer.commit"}))
 
     async def send_initial_prompts(self, websocket):
         logger.info(f"Sending {len(self.prompts)} prompts: {self.prompts}")
@@ -303,12 +304,12 @@ class RealtimeAPI:
             },
         }
         log_ws_event("Outgoing", event)
-        await websocket.send(json.dumps(event))
+        await websocket.send(await asyncjson.dumps(event))
 
         # Trigger the assistant's response
         response_create_event = {"type": "response.create"}
         log_ws_event("Outgoing", response_create_event)
-        await websocket.send(json.dumps(response_create_event))
+        await websocket.send(await asyncjson.dumps(response_create_event))
 
             
 
