@@ -10,6 +10,12 @@ from typing import Optional
 import pyaudio
 import queue
 import logging
+class AudioPacket(BaseModel):
+    """
+    Represents a chunk of captured audio data and any
+    metadata you need (timestamp, length, etc.).
+    """
+    audio_data: bytes
 
 class AudioFormat(BaseModel):
     format: int = Field(default=pyaudio.paInt16, description="Audio format (e.g., paInt16)")

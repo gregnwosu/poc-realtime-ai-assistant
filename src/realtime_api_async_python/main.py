@@ -29,7 +29,7 @@ from .modules.utils import (
 )
 from .modules.logging import logger, log_ws_event
 import sys
-
+from .modules.logging import logger, log_ws_event, log_info, log_error, log_runtime
 # Load environment variables
 load_dotenv()
 
@@ -51,26 +51,9 @@ with open(os.getenv("PERSONALIZATION_FILE"), "r") as f:
     personalization = json.load(f)
 
 
-
-
-
-def log_runtime(function_or_name: str, duration: float):
-    jsonl_file = RUN_TIME_TABLE_LOG_JSON
-    time_record = {
-        "timestamp": datetime.now().isoformat(),
-        "function": function_or_name,
-        "duration": f"{duration:.4f}",
-    }
-    with open(jsonl_file, "a") as file:
-        json.dump(time_record, file)
-        file.write("\n")
-
-    logger.info(f"⏰ {function_or_name}() took {duration:.4f} seconds")
-
-
-class RealtimeAPI:
-    def __init__(self, prompts=None):
-        self.prompts = prompts
+class OpenAIRealtimeAPI:
+    def __init__(self):
+        
         self.api_key = os.getenv("OPENAI_API_KEY")
         if not self.api_key:
             logger.error("Please set the OPENAI_API_KEY in your .env file.")
@@ -87,7 +70,7 @@ class RealtimeAPI:
         self.function_call_args = ""
         self.response_start_time = None
 
-    async def run(self):
+    async def run(self, prompts=None):
         while True:
             try:
                 url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"
@@ -112,13 +95,13 @@ class RealtimeAPI:
                         "Conversation started. Speak freely, and the assistant will respond."
                     )
 
-                    if self.prompts:
+                    if prompts:
                         await self.send_initial_prompts(websocket)
                     else:
                         self.mic.start_recording()
                         logger.info("Recording started. Listening for speech...")
 
-                    #await self.send_audio_loop([openai_realtime.get_openai_send_audio_callback(websocket),  whisper_speechtotext.transcribe_audio], [openai_realtime.get_openai_after_recieve_callback(websocket)])
+                   
                     await self.send_audio_loop([openai_realtime.get_openai_send_audio_callback(websocket)], [openai_realtime.get_openai_after_recieve_callback(websocket)])
                     logger.info("before await ws_task")
 
@@ -316,6 +299,7 @@ class RealtimeAPI:
             
 
     async def send_audio_loop(self, callbacks, post_callbacks):
+        """ Continuously send audio data to the assistant """
         try:
             while not self.exit_event.is_set():
                 await asyncio.sleep(0.1)  # Small delay to accumulate audio data
@@ -343,9 +327,9 @@ def main():
 
     prompts = args.prompts.split("|") if args.prompts else None
 
-    realtime_api_instance = RealtimeAPI(prompts)
+    realtime_api_instance = OpenAIRealtimeAPI()
     try:
-        asyncio.run(realtime_api_instance.run())
+        asyncio.run(realtime_api_instance.run(prompts))
     except KeyboardInterrupt:
         logger.info("Program terminated by user")
     except Exception as e:
