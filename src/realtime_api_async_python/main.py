@@ -10,11 +10,11 @@ from dotenv import load_dotenv
 from websockets.exceptions import ConnectionClosedError
 import asyncjson
 
-from   realtime_api_async_python.modules import openai_realtime 
+from   realtime_api_async_python.modules import openai_realtime , whisper_speechtotext
 from .modules.logging import log_tool_call, log_error, log_info, log_warning
 
 # Import from modules
-from .modules.async_microphone import AsyncMicrophone
+from .modules.async_microphone import AsyncMicrophone, ConversationState
 from .modules.audio import play_audio
 from .modules.tools import (
     function_map,
@@ -76,7 +76,8 @@ class RealtimeAPI:
             logger.error("Please set the OPENAI_API_KEY in your .env file.")
             sys.exit(1)
         self.exit_event = asyncio.Event()
-        self.mic = AsyncMicrophone()
+        self.conversation_state = ConversationState()
+        self.mic = AsyncMicrophone(conversation_state=self.conversation_state)
 
         # Initialize state variables
         self.assistant_reply = ""
@@ -117,8 +118,8 @@ class RealtimeAPI:
                         self.mic.start_recording()
                         logger.info("Recording started. Listening for speech...")
 
-                    await self.send_audio_loop(openai_realtime.get_openai_send_audio_callback(websocket), openai_realtime.get_openai_after_recieve_callback(websocket))
-
+                    #await self.send_audio_loop([openai_realtime.get_openai_send_audio_callback(websocket),  whisper_speechtotext.transcribe_audio], [openai_realtime.get_openai_after_recieve_callback(websocket)])
+                    await self.send_audio_loop([openai_realtime.get_openai_send_audio_callback(websocket)], [openai_realtime.get_openai_after_recieve_callback(websocket)])
                     logger.info("before await ws_task")
 
                     # Wait for the WebSocket processing task to complete
@@ -161,7 +162,8 @@ class RealtimeAPI:
     async def handle_event(self, event, websocket):
         event_type = event.get("type")
         if event_type == "response.created":
-            self.mic.start_receiving()
+            self.mic.stop_recording()
+            self.conversation_state.start_receiving()
             self.response_in_progress = True
         elif event_type == "response.output_item.added":
             await self.handle_output_item_added(event)
@@ -273,7 +275,7 @@ class RealtimeAPI:
         self.assistant_reply = ""
         self.audio_chunks = []
         logger.info("Calling stop_receiving()")
-        self.mic.stop_receiving()
+        self.conversation_state.stop_receiving()
 
     async def handle_error(self, event, websocket):
         error_message = event.get("error", {}).get("message", "")
@@ -313,21 +315,21 @@ class RealtimeAPI:
 
             
 
-    async def send_audio_loop(self, callback, post_callback):
+    async def send_audio_loop(self, callbacks, post_callbacks):
         try:
             while not self.exit_event.is_set():
                 await asyncio.sleep(0.1)  # Small delay to accumulate audio data
-                if not self.mic.is_receiving:
-                    audio_data = self.mic.get_audio_data()
+                if not self.conversation_state.is_receiving:
+                    audio_data =  self.mic.get_audio_data()
                     if audio_data and len(audio_data) > 0:                        
-                        await callback(audio_data)
+                        await asyncio.gather(*[callback(audio_data) for callback in callbacks])
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received. Closing the connection.")
         finally:
             self.exit_event.set()
             self.mic.stop_recording()
             self.mic.close()
-            await post_callback()
+            await asyncio.gather(*[callback() for callback in post_callbacks])
 
 
 def main():
