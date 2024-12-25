@@ -37,18 +37,21 @@ async def initialize_session(websocket):
     session_update = {
         "type": "session.update",
         "session": {
-            "modalities": ["text", "audio"],
-            "instructions": SESSION_INSTRUCTIONS,
-            "voice": "alloy",
+            "modalities": ["text"],#, "audio"],
+            #"instructions": SESSION_INSTRUCTIONS,
+            #"voice": "alloy",
             "input_audio_format": "pcm16",
-            "output_audio_format": "pcm16",
+           # "output_audio_format": "pcm16",
             "turn_detection": {
                 "type": "server_vad",
                 "threshold": SILENCE_THRESHOLD,
                 "prefix_padding_ms": PREFIX_PADDING_MS,
                 "silence_duration_ms": SILENCE_DURATION_MS,
             },
-            "tools": tools,
+            "input_audio_transcription": {
+            "model": "whisper-1"  # Specify the transcription model
+            },
+            "mode" : "transcription_only"
         },
     }
     log_ws_event("Outgoing", session_update)
