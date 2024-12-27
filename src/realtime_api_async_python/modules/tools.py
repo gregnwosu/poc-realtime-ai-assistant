@@ -12,6 +12,8 @@ from typing import Any, Dict, Tuple, List, Optional
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 from enum import Enum
+
+from realtime_api_async_python.modules.gen_descriptor import build_function_descriptor
 from .llm import parse_markdown_backticks, structured_output_prompt, chat_prompt
 from .memory_management import memory_manager
 from .logging import log_info
@@ -1996,6 +1998,6 @@ tools = [
             "required": ["prompt"],
         },
     },
-    get_send_email_descriptor(),
+    build_function_descriptor(send_email_to_recipient),
     
 ]

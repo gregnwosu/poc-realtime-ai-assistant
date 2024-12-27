@@ -145,35 +145,45 @@ class OpenAIRealtimeAPI:
                 break
 
     async def handle_event(self, event, websocket):
-        event_type = event.get("type")
-        if event_type == "response.created":
-            self.mic.stop_recording()
-            self.conversation_state.start_receiving()
-            self.response_in_progress = True
-        elif event_type == "response.output_item.added":
-            await self.handle_output_item_added(event)
-        elif event_type == "response.function_call_arguments.delta":
-            self.function_call_args += event.get("delta", "")
-        elif event_type == "response.function_call_arguments.done":
-            await self.handle_function_call(event, websocket)
-        elif event_type == "response.text.delta":
-            delta = event.get("delta", "")
-            self.assistant_reply += delta
-            print(f"Assistant: {delta}", end="", flush=True)
-        elif event_type == "response.audio.delta":
-            self.audio_chunks.append(base64.b64decode(event["delta"]))
-        elif event_type == "response.done":
-            await self.handle_response_done()
-        elif event_type == "error":
-            await self.handle_error(event, websocket)
-        elif event_type == "input_audio_buffer.speech_started":
-            logger.info("Speech detected, listening...")
-        elif event_type == "input_audio_buffer.speech_stopped":
-            await self.handle_speech_stopped(websocket)
-        elif event_type == "rate_limits.updated":
-            self.response_in_progress = False
-            self.mic.is_recording = True
-            logger.info("Resumed recording after rate_limits.updated")
+        match event.get("type"):
+            case "response.created":
+                self.mic.stop_recording()
+                self.conversation_state.start_receiving()
+                self.response_in_progress = True
+                
+            case "response.output_item.added":
+                await self.handle_output_item_added(event)
+                
+            case "response.function_call_arguments.delta":
+                self.function_call_args += event.get("delta", "")
+                
+            case "response.function_call_arguments.done":
+                await self.handle_function_call(event, websocket)
+                
+            case "response.text.delta":
+                delta = event.get("delta", "")
+                self.assistant_reply += delta
+                print(f"Assistant: {delta}", end="", flush=True)
+                
+            case "response.audio.delta":
+                self.audio_chunks.append(base64.b64decode(event["delta"]))
+                
+            case "response.done":
+                await self.handle_response_done()
+                
+            case "error":
+                await self.handle_error(event, websocket)
+                
+            case "input_audio_buffer.speech_started":
+                logger.info("Speech detected, listening...")
+                
+            case "input_audio_buffer.speech_stopped":
+                await self.handle_speech_stopped(websocket)
+                
+            case "rate_limits.updated":
+                self.response_in_progress = False
+                self.mic.is_recording = True
+                logger.info("Resumed recording after rate_limits.updated")
 
     async def handle_output_item_added(self, event):
         item = event.get("item", {})

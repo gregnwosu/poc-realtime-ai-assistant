@@ -138,9 +138,9 @@ async def send_email(
 from typing import Annotated
 from pydantic.functional_validators import BeforeValidator
 
-async def send_email_to_recipient(prompt:str, content:dict) -> bool:
+async def send_email_to_recipient(prompt: Annotated[str, {"description": "User instruction or prompt for sending the email"}], content:EmailContent) -> EmailSendResult:
     """ Sends an email to the recipient using the Gmail API"""
-    return (await email_send_agent.run(prompt, deps=EmailContent(**content))).data.email_sent
+    return (await email_send_agent.run(prompt, deps=EmailContent(**content))).data.model_dump()
         
 def get_send_email_descriptor():
     return { "type": "function",
