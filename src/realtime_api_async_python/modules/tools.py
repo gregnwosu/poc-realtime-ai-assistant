@@ -1623,6 +1623,7 @@ function_map = {
     "create_python_chart": create_python_chart,
     "send_email_to_recipient": send_email_to_recipient,
     "shutdown": shutdown,
+    "find_contact": find_contact,
 }
 
 # Tools array for session initialization
@@ -2010,4 +2011,19 @@ tools = [
     },
     build_function_descriptor(send_email_to_recipient),
     build_function_descriptor(shutdown),
+    {
+        "type": "function",
+        "name": "find_contact", 
+        "description": "Search Google Contacts for a contact by name",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "prompt": {
+                    "type": "string",
+                    "description": "Name or partial name to search for in contacts"
+                }
+            },
+            "required": ["prompt"]
+        }
+    }
 ]

@@ -53,6 +53,61 @@ class EmailSearchResults(BaseModel):
 class EmailSendResult(BaseModel):
     email_sent: bool = Field(description="Flag indicating if the email was successfully sent", default=False)
 
+class ContactSearchResult(BaseModel):
+    name: str = Field(description="Full name of the contact")
+    email: EmailStr = Field(description="Email address of the contact")
+    
+async def lookup_contact(name: str) -> List[ContactSearchResult]:
+    """Look up contacts by name using Gmail API"""
+    client = await create_gmail_client(await get_fresh_credentials())
+    
+    headers = {
+        "Authorization": f"Bearer {client.credentials.token}",
+        "Accept": "application/json",
+    }
+    
+    # Use people API to search contacts
+    people_url = "https://people.googleapis.com/v1/people:searchContacts"
+    params = {
+        "query": name,
+        "readMask": "names,emailAddresses",
+        "sources": ["READ_SOURCE_TYPE_CONTACT"]
+    }
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(people_url, headers=headers, params=params) as response:
+            result = await response.json()
+            
+            contacts = []
+            if "results" in result:
+                for person in result["results"]:
+                    person_data = person.get("person", {})
+                    names = person_data.get("names", [])
+                    emails = person_data.get("emailAddresses", [])
+                    
+                    if names and emails:
+                        contacts.append(ContactSearchResult(
+                            name=names[0].get("displayName", ""),
+                            email=emails[0].get("value", "")
+                        ))
+            
+            return contacts
+
+async def find_contact(prompt: str) -> dict:
+    """Find a contact by name in Google Contacts"""
+    try:
+        contacts = await lookup_contact(prompt)
+        return {
+            "status": "success",
+            "contacts": [contact.model_dump() for contact in contacts],
+            "message": f"Found {len(contacts)} contacts matching '{prompt}'"
+        }
+    except Exception as e:
+        return {
+            "status": "error", 
+            "message": f"Failed to look up contact: {str(e)}"
+        }
+
 
 async def create_gmail_client(creds: GmailCredentials) -> GmailClient:
     print(f"\n\n\n {["*"]*10}\n Create Gmail client")
@@ -81,7 +136,8 @@ email_send_agent: Agent[EmailContent, EmailSendResult] = Agent(
 async def get_fresh_credentials() -> GmailCredentials:
     """Get fresh credentials using client secrets JSON. Will open browser first time."""
     print(f"\n\n\n {["*"]*10}\n Getting fresh credentials")
-    scopes = ['https://www.googleapis.com/auth/gmail.modify']
+    scopes = ['https://www.googleapis.com/auth/gmail.modify',
+              'https://www.googleapis.com/auth/contacts.readonly']
     client_secrets_path: Path = Path(".client_secret.json")
     token_path: Path = Path(".gmail_token.json")
     
