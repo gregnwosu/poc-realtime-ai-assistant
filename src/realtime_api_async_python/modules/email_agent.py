@@ -83,11 +83,29 @@ async def get_fresh_credentials() -> GmailCredentials:
     print(f"\n\n\n {["*"]*10}\n Getting fresh credentials")
     scopes = ['https://www.googleapis.com/auth/gmail.modify']
     client_secrets_path: Path = Path(".client_secret.json")
-    flow = InstalledAppFlow.from_client_secrets_file(
-        str(client_secrets_path), 
-        scopes
-    )
-    creds = flow.run_local_server(port=0)
+    token_path: Path = Path(".gmail_token.json")
+    
+    creds = None
+    # Check if we have saved token
+    if token_path.exists():
+        with open(token_path, 'r') as token_file:
+            token_data = json.load(token_file)
+            creds = Credentials.from_authorized_user_info(token_data, scopes)
+    
+    # If no valid creds available, let user login
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(
+                str(client_secrets_path), 
+                scopes
+            )
+            creds = flow.run_local_server(port=0)
+        
+        # Save the credentials for next run
+        with open(token_path, 'w') as token_file:
+            token_file.write(creds.to_json())
     
     return GmailCredentials(
         token=creds.token,
