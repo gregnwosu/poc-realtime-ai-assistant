@@ -1,0 +1,8 @@
+{
+    "pythonTestExplorer.testFramework": "pytest",
+    "python.testing.pytestArgs": [
+        "tests/*"
+    ],
+    "python.analysis.inlayHints.pytestParameters": true,
+    "editor.defaultFormatter": "ms-python.black-formatter"
+}

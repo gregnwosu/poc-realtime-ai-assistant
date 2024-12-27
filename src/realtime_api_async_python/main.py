@@ -9,6 +9,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from websockets.exceptions import ConnectionClosedError
 import asyncjson
+from .modules.email_agent import get_fresh_credentials
 
 from   realtime_api_async_python.modules import openai_realtime , whisper_speechtotext
 from .modules.logging import log_tool_call, log_error, log_info, log_warning
@@ -71,6 +72,7 @@ class OpenAIRealtimeAPI:
         self.response_start_time = None
 
     async def run(self, prompts=None):
+        await get_fresh_credentials()
         while True:
             try:
                 url = "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01"

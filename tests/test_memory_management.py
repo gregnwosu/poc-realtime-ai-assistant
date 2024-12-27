@@ -1,7 +1,8 @@
 import pytest
 import os
 import json
-from src.realtime_api_async_python.modules.memory_management import MemoryManager
+
+from realtime_api_async_python.modules.memory_management import MemoryManager
 
 
 @pytest.fixture

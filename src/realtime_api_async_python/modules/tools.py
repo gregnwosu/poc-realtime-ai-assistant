@@ -27,6 +27,7 @@ from .utils import (
 from .mermaid import generate_diagram
 from .database import get_database_instance
 import re
+from .email_agent import get_send_email_descriptor, send_email_to_recipient
 
 
 @timeit_decorator
@@ -1609,6 +1610,7 @@ function_map = {
     "generate_sql_and_execute": generate_sql_and_execute,
     "run_sql_file": run_sql_file,
     "create_python_chart": create_python_chart,
+    "send_email_to_recipient": send_email_to_recipient,
 }
 
 # Tools array for session initialization
@@ -1994,4 +1996,6 @@ tools = [
             "required": ["prompt"],
         },
     },
+    get_send_email_descriptor(),
+    
 ]

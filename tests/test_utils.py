@@ -1,6 +1,6 @@
 import pytest
 from unittest.mock import patch, MagicMock
-from ..modules.utils import scrap_url, scrap_url_clean
+from realtime_api_async_python.modules.utils import scrap_url, scrap_url_clean
 from dotenv import load_dotenv
 import os
 

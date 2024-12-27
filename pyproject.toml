@@ -10,7 +10,7 @@ dependencies = [
     "openai>=1.51.0",
     "pyaudio>=0.2.14",
     "numpy>=2.0",
-    "pydantic>=2.9.2",
+    "pydantic[email]>=2.9.2",
     "pytest>=8.3.3",
     "pytest-asyncio>=0.24.0",
     "pyperclip>=1.9.0",
@@ -42,5 +42,9 @@ build-backend = "hatchling.build"
 [project.scripts]
 main = "realtime_api_async_python.main:main"
 
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+python_functions = ["test_", "it_", "and_", "but_", "they_"]
+python_files = ["test_*.py",]
+testpaths = ["tests",]
