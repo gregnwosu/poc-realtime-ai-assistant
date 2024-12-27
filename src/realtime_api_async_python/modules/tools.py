@@ -1,6 +1,7 @@
 import asyncio
 import io
 import os
+import sys
 import json
 import random
 import logging
@@ -684,6 +685,14 @@ async def generate_sql_and_execute(prompt: str) -> dict:
         "message": f"SQL query results saved to {response.output_format} file '{response.file_name}'.",
     }
 
+
+@timeit_decorator
+async def shutdown() -> dict:
+    """
+    Shuts down the program gracefully with a success exit code (0).
+    """
+    print("Shutting down the program gracefully...")
+    sys.exit(0)  # Exit with code 0 indicating successful termination
 
 async def run_sql_file(prompt: str) -> dict:
     """
@@ -1613,6 +1622,7 @@ function_map = {
     "run_sql_file": run_sql_file,
     "create_python_chart": create_python_chart,
     "send_email_to_recipient": send_email_to_recipient,
+    "shutdown": shutdown,
 }
 
 # Tools array for session initialization
@@ -1999,5 +2009,5 @@ tools = [
         },
     },
     build_function_descriptor(send_email_to_recipient),
-    
+    build_function_descriptor(shutdown),
 ]
