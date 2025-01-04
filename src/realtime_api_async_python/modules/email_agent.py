@@ -32,8 +32,9 @@ class EmailSearchFilters(BaseModel):
     recipient_reference: Optional[str] = Field(default=None,description="Reference ID or string to search in recipient field")
     recipient_email: Optional[EmailStr] = Field(default=None,description="Email address of the recipient to search for")
 
-class EmailContent(BaseModel):
-    recipient_email: EmailStr = Field(description="Email address of the recipient")
+class EmailRequest(BaseModel):
+    #recipient_email: EmailStr = Field(description="Email address of the recipient")
+    recipient_name: str = Field(description="name of the recipient of the email, the email address should be looked up using the contacts agent")
     subject: str = Field(description="Subject line of the email")
     body: str = Field(description="Main content/body of the email")
 
@@ -45,7 +46,7 @@ class SearchEmailResult(BaseModel):
     
 class EmailSendDependencies(BaseModel):
     credentials: GmailCredentials = Field(description="Gmail API credentials")
-    email: EmailContent = Field(description="Email content to send")
+    email: EmailRequest = Field(description="Email content to send")
     
 class EmailSearchResults(BaseModel):
     results: list[SearchEmailResult] = Field(description="List of email search results",default=[]) 
@@ -55,7 +56,6 @@ class EmailSendResult(BaseModel):
 
 
 async def create_gmail_client(creds: GmailCredentials) -> GmailClient:
-    print(f"\n\n\n {["*"]*10}\n Create Gmail client")
     if creds.expiry <= dt.now():
         # Implement refresh logic
         pass
@@ -66,9 +66,9 @@ async def create_gmail_client(creds: GmailCredentials) -> GmailClient:
     )
 
 
-email_send_agent: Agent[EmailContent, EmailSendResult] = Agent(  
+email_send_agent: Agent[EmailRequest, EmailSendResult] = Agent(  
     'openai:gpt-4o',  
-    deps_type=EmailContent,
+    deps_type=EmailRequest,
     result_type=EmailSendResult,  
     system_prompt=(  
         'You are an email sending agent. Validate the email content '
@@ -80,7 +80,6 @@ email_send_agent: Agent[EmailContent, EmailSendResult] = Agent(
 @alru_cache(maxsize=32)
 async def get_fresh_credentials() -> GmailCredentials:
     """Get fresh credentials using client secrets JSON. Will open browser first time."""
-    print(f"\n\n\n {["*"]*10}\n Getting fresh credentials")
     scopes = ['https://www.googleapis.com/auth/gmail.modify']
     client_secrets_path: Path = Path(".client_secret.json")
     token_path: Path = Path(".gmail_token.json")
@@ -114,7 +113,7 @@ async def get_fresh_credentials() -> GmailCredentials:
 
 @email_send_agent.tool  
 async def send_email(
-    ctx: RunContext[EmailContent], 
+    ctx: RunContext[EmailRequest], 
 ) -> EmailSendResult:
     """sends an email using the Gmail API"""  
  
@@ -156,41 +155,41 @@ async def send_email(
 from typing import Annotated
 from pydantic.functional_validators import BeforeValidator
 
-async def send_email_to_recipient(prompt: Annotated[str, {"description": "User instruction or prompt for sending the email"}], content:EmailContent) -> EmailSendResult:
+async def send_email_to_recipient(prompt: Annotated[str, {"description": "User instruction or prompt for sending the email"}], content:EmailRequest) -> EmailSendResult:
     """ Sends an email to the recipient using the Gmail API"""
-    return (await email_send_agent.run(prompt, deps=EmailContent(**content))).data.model_dump()
+    return (await email_send_agent.run(prompt, deps=EmailRequest(**content))).data.model_dump()
         
-def get_send_email_descriptor():
-    return { "type": "function",
-    "name": "send_email_to_recipient",
-    "description": "Sends an email to the recipient using the Gmail API. And Returns a boolean flag indicating if the email was successfully sent",
-    "parameters": {
-        "type": "object",
-        "properties": {
-        "prompt": {
-            "type": "string",
-            "description": "User instruction or prompt for sending the email"
-        },
-        "content": {
-            "type": "object",
-            "properties": {
-            "recipient_email": {
-                "type": "string",
-                "description": "Email address of the recipient"
-            },
-            "subject": {
-                "type": "string",
-                "description": "Subject line of the email"
-            },
-            "body": {
-                "type": "string",
-                "description": "Main content/body of the email"
-            }
-            },
-            "required": ["recipient_email", "subject", "body"]
-        }
-        },
-        "required": ["prompt", "content"]
-    }
-    }
+# def get_send_email_descriptor():
+#     return { "type": "function",
+#     "name": "send_email_to_recipient",
+#     "description": "Sends an email to the recipient using the Gmail API. And Returns a boolean flag indicating if the email was successfully sent",
+#     "parameters": {
+#         "type": "object",
+#         "properties": {
+#         "prompt": {
+#             "type": "string",
+#             "description": "User instruction or prompt for sending the email"
+#         },
+#         "content": {
+#             "type": "object",
+#             "properties": {
+#             "recipient_email": {
+#                 "type": "string",
+#                 "description": "Email address of the recipient"
+#             },
+#             "subject": {
+#                 "type": "string",
+#                 "description": "Subject line of the email"
+#             },
+#             "body": {
+#                 "type": "string",
+#                 "description": "Main content/body of the email"
+#             }
+#             },
+#             "required": ["recipient_email", "subject", "body"]
+#         }
+#         },
+#         "required": ["prompt", "content"]
+#     }
+#     }
     
