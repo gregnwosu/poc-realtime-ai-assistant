@@ -55,7 +55,7 @@ async def chat_prompt(prompt: str, llm_model: str) -> str:
     Returns:
         str: The assistant's response.
     """
-    agent:Agent[Any,str] = await get_agent( llm_model)
+    agent:Agent[Any,str] = await get_agent(llm_model)
     completion = await agent.run(
         prompt,
     )
