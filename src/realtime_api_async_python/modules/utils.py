@@ -49,8 +49,9 @@ all_agents  = {
 def timeit_decorator(func):
     @functools.wraps(func)
     async def async_wrapper(*args, **kwargs):
-        start_time = time.perf_counter()
+        #start_time = time.perf_counter()
         result = await func(*args, **kwargs)
+        return result
         end_time = time.perf_counter()
         duration = round(end_time - start_time, 4)
         print(f"⏰ {func.__name__}() took {duration:.4f} seconds")

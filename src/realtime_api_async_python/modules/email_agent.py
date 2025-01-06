@@ -1,35 +1,25 @@
 
-from pydantic_ai import Agent
+import base64
+import json
 from dataclasses import dataclass
-from typing import Optional
-from pydantic import BaseModel
-from pydantic import EmailStr, BaseModel, model_validator, Field, AnyHttpUrl, PhoneNumber, HttpUrl
-from pydantic_ai import Agent, RunContext 
-from pydantic_ai.result import RunResult
-from googleapiclient.discovery import build
+from datetime import datetime as dt
+from enum import Enum
+from pathlib import Path
 from typing import Optional
 
-from google.oauth2.credentials import Credentials
 import aiofiles
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-from google.oauth2.credentials import Credentials
-from google.auth.transport.requests import Request
-from datetime import datetime as dt
-import base64
-import aiohttp 
-from google.oauth2.credentials import Credentials
-from pathlib import Path
-import json
+import aiohttp
 from async_lru import alru_cache
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import Resource, build
+from pydantic import (AnyHttpUrl, BaseModel, EmailStr, Field, HttpUrl, model_validator)
+from pydantic_ai import Agent, RunContext
+from pydantic_ai.result import RunResult
 from pydantic_extra_types.phone_numbers import PhoneNumber
 
 
-from enum import Enum
-from googleapiclient.discovery import build, Resource
 
 class ContactSearchRequest(BaseModel):
     query: str = Field(description="""   
@@ -88,7 +78,6 @@ class SearchEmailResult(BaseModel):
     body: str = Field(description="Main content/body of the email")
     
 class EmailSendDependencies(BaseModel):
-    credentials: Credentials = Field(description="Gmail API credentials")
     email: EmailRequest = Field(description="Email content to send")
     
 class EmailSearchResults(BaseModel):
@@ -110,7 +99,8 @@ async def get_fresh_credentials() -> Credentials:
     """Get fresh credentials using client secrets JSON. Will open browser first time."""
     print(f"\n\n\n {["*"]*10}\n Getting fresh credentials")
     scopes = ['https://www.googleapis.com/auth/gmail.modify',
-              'https://www.googleapis.com/auth/contacts']
+              "https://www.googleapis.com/auth/contacts"
+              ]
 
     client_secrets_path: Path = Path(".client_secret.json")
     token_path: Path = Path(".gmail_token.json")
@@ -118,7 +108,8 @@ async def get_fresh_credentials() -> Credentials:
     creds : Optional[Credentials] = None
     # Check if we have saved token
     if token_path.exists():
-        async with aiofiles.open(token_path, 'r') as token_file:
+        with open(token_path, 'r') as token_file:
+            
             token_data = json.load(token_file)
             creds = Credentials.from_authorized_user_info(token_data, scopes)
     
@@ -139,7 +130,7 @@ async def get_fresh_credentials() -> Credentials:
         case None:
              raise Exception("Failed to get credentials")
         case _:
-            async with aiofiles.open(token_path, 'w') as token_file:
+            with open(token_path, 'w') as token_file:
                 token_data = {
                         'token': creds.token,
                         'refresh_token': creds.refresh_token,
@@ -152,9 +143,9 @@ async def get_fresh_credentials() -> Credentials:
             return creds
             
 
-class GoogleServices(str, Enum):
+class GoogleServices( Enum):
     contacts = ("people", "v1", "https://people.googleapis.com")
-    gmail = ("gmail", "v1", "https://gmail.googleapis.com/gmail/") 
+    gmail = ("gmail", "v1", "https://gmail.googleapis.com/gmail") 
     
     def __init__(self, service_name: str, version: str, base_url: str):
         super().__init__()
@@ -166,47 +157,6 @@ class GoogleServices(str, Enum):
         # Build and return the service
         return build(self.service_name, self.version, credentials=credentials)
     
-def extract_contact(person: dict) -> Optional[ContactSearchResult]:
-    """Extracts a ContactSearchResult from a person dict if names and emails exist."""
-    
-    person_data = person.get("person", {})
-    names = person_data.get("names", [])
-    emails = person_data.get("emailAddresses", [])
-    phone_numbers = person_data.get("phoneNumbers", [])
-    
-    if names and emails:
-        return ContactSearchResult(
-            name=names[0].get("displayName", ""),
-            email=emails[0].get("value", ""),
-            phone_number=phone_numbers[0].get("value", "") if phone_numbers else None
-        )
-    return None
-  
-async def lookup_contact(name: str) -> ContactSearchResults:
-    """Look up contacts by name using Gmail API"""
-    creds: Credentials = await get_fresh_credentials()
-    client:Resource  = await GoogleServices.contacts.get_google_service(creds)
-    
-    headers = {
-        "Authorization": f"Bearer {creds.token}",
-        "Accept": "application/json",
-    }
-    
-    # Use people API to search contacts
-    params = {
-        "query": name,
-        "readMask": "names,emailAddresses,phoneNumbers",
-        #"sources": ["READ_SOURCE_TYPE_CONTACT"]
-    }
-    
-    async with aiohttp.ClientSession() as session:
-        async with session.get(f"{GoogleServices.contacts.base_url}/{GoogleServices.contacts.version}/people:searchContacts",
-                               headers=headers, params=params) as response:
-            response.raise_for_status()
-            result = await response.json()
-            print(f"{response=}") 
-            results = [contact for person in result.get("results", []) if (contact := extract_contact(person)) is not None]           
-            return ContactSearchResults(results=results)
 
 
 
@@ -225,7 +175,7 @@ email_send_agent: Agent[EmailRequest, EmailSendResult] = Agent(
     ),
 ) 
 
-contact_lookup_agent: Agent[ContactSearchRequest, list[ContactSearchResults]] = Agent(  
+contact_lookup_agent: Agent[ContactSearchRequest, ContactSearchResults] = Agent(  
     'openai:gpt-4o',  
     deps_type=ContactSearchRequest,
     result_type=ContactSearchResults,  
@@ -278,8 +228,203 @@ contact_lookup_agent: Agent[ContactSearchRequest, list[ContactSearchResults]] = 
     ),
 ) 
 
+
+import json
+import logging
+from typing import Optional
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+def extract_contact(person: dict) -> Optional[ContactSearchResult]:
+    """Extracts a ContactSearchResult from a person dict if names and emails exist."""
+    logger.debug("Extracting contact from person data: %s", json.dumps(person, indent=2))
     
+    person_data = person.get("person", {})
+    logger.debug("Person data: %s", json.dumps(person_data, indent=2))
+    
+    names = person_data.get("names", [])
+    emails = person_data.get("emailAddresses", [])
+    phone_numbers = person_data.get("phoneNumbers", [])
+    
+    logger.debug("Extracted fields:")
+    logger.debug("Names: %s", names)
+    logger.debug("Emails: %s", emails)
+    logger.debug("Phone numbers: %s", phone_numbers)
+    
+    if names and ( phone_numbers or emails):
+        contact = ContactSearchResult(
+            name=names[0].get("displayName", None),
+            email=emails[0].get("value", None) if phone_numbers else None,
+            phone_number=phone_numbers[0].get("value", None) if phone_numbers else None
+        )
+        logger.debug("Created contact: %s", contact)
+        return contact
+    
+    logger.debug("No valid contact data found")
+    return None
+
+def extract_contact(person: dict) -> Optional[ContactSearchResult]:
+    """
+    Extracts a ContactSearchResult from a person dict if required fields exist.
+    Now handles missing email addresses properly.
+    """
+    logger.debug("Extracting contact from person data: %s", json.dumps(person, indent=2))
+    
+    person_data = person.get("person", {})
+    names = person_data.get("names", [])
+    emails = person_data.get("emailAddresses", [])
+    phone_numbers = person_data.get("phoneNumbers", [])
+    
+    logger.debug("Extracted fields:")
+    logger.debug("Names: %s", names)
+    logger.debug("Emails: %s", emails)
+    logger.debug("Phone numbers: %s", phone_numbers)
+    
+    # Must have at least a name
+    if not names:
+        logger.debug("No name found, skipping contact")
+        return None
         
+    # Extract basic info - name is required
+    name = names[0].get("displayName", "")
+    if not name:
+        logger.debug("Empty name found, skipping contact")
+        return None
+        
+    # Email is optional
+    email = emails[0].get("value", "") if emails else ""
+    
+    # Phone is optional
+    phone_number = phone_numbers[0].get("value", "") if phone_numbers else ""
+    
+    contact = ContactSearchResult(
+        name=name,
+        email=email,
+        phone_number=phone_number
+    )
+    
+    logger.debug("Created contact: %s", contact)
+    return contact
+
+async def _lookup_contact(query: str) -> ContactSearchResults:
+    """Look up contacts by name using Gmail API"""
+    logger.info("Looking up contact with query: %s", query)
+    
+    creds: Credentials = await get_fresh_credentials()
+    logger.debug("Got credentials with token: %s...", creds.token[:10])
+    
+    client: Resource = GoogleServices.contacts.get_google_service(creds)
+    logger.debug("Created Google service client")
+    
+    headers = {
+        "Authorization": f"Bearer {creds.token}",
+        "Accept": "application/json",
+    }
+    
+    params = {
+        "query": query,
+        "readMask": "names,emailAddresses,phoneNumbers",
+        # "sources": [  # Will be properly encoded as multiple query params
+        #     "READ_SOURCE_TYPE_CONTACT",
+        #     "READ_SOURCE_TYPE_DOMAIN_CONTACT",
+        #     "READ_SOURCE_TYPE_PROFILE",
+        #     "READ_SOURCE_TYPE_OTHER_CONTACT"
+        # ]
+    }
+    
+    url = f"{GoogleServices.contacts.base_url}/{GoogleServices.contacts.version}/people:searchContacts"
+    logger.debug("Making request to URL: %s", url)
+    logger.debug("Request params: %s", params)
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=headers, params=params) as response:
+            response.raise_for_status()
+            logger.debug("Response status: %s", response.status)
+            logger.debug("Response headers: %s", dict(response.headers))
+            
+            result = await response.json()
+            logger.debug("Raw API response: %s", json.dumps(result, indent=2))
+            
+            results = []
+            for person in result.get("results", []):
+                logger.debug("Processing person: %s", json.dumps(person, indent=2))
+                if contact := extract_contact(person):
+                    results.append(contact)
+                    logger.debug("Added contact to results: %s", contact)
+            
+            search_results = ContactSearchResults(results=results)
+            logger.info("Found %d contacts", len(results))
+            return search_results
+
+async def list_contacts(creds: Credentials) -> dict:
+    """List first few contacts to verify access"""
+    headers = {
+        "Authorization": f"Bearer {creds.token}",
+        "Accept": "application/json",
+    }
+    
+    params = {
+        "pageSize": 10,
+        "personFields": "names,emailAddresses,phoneNumbers"
+    }
+    
+    async with aiohttp.ClientSession() as session:
+        url = f"{GoogleServices.contacts.base_url}/{GoogleServices.contacts.version}/people/me/connections"
+        logger.debug("Making list request to: %s", url)
+        logger.debug("With params: %s", params)
+        
+        async with session.get(url, headers=headers, params=params) as response:
+            if response.status != 200:
+                error_text = await response.text()
+                logger.error(f"List contacts error: {error_text}")
+            response.raise_for_status()
+            return await response.json()
+
+async def _lookup_contact(query: str) -> ContactSearchResults:
+    """Look up contacts by name using Gmail API"""
+    logger.info("Looking up contact with query: %s", query)
+    
+    creds: Credentials = await get_fresh_credentials()
+    
+    # Try finding contacts by partial name match from the connections list
+    async with aiohttp.ClientSession() as session:
+        url = f"{GoogleServices.contacts.base_url}/{GoogleServices.contacts.version}/people/me/connections"
+        headers = {
+            "Authorization": f"Bearer {creds.token}",
+            "Accept": "application/json",
+        }
+        params = {
+            "pageSize": 1000,  # Get more contacts
+            "personFields": "names,emailAddresses,phoneNumbers"
+        }
+        
+        async with session.get(url, headers=headers, params=params) as response:
+            response.raise_for_status()
+            result = await response.json()
+            
+            # Do our own filtering since search API isn't working
+            query_terms = query.lower().split()
+            matched_contacts = []
+            
+            for connection in result.get("connections", []):
+                names = connection.get("names", [])
+                if not names:
+                    continue
+                    
+                name = names[0].get("displayName", "").lower()
+                # Check if all query terms are in the name
+                if all(term in name for term in query_terms):
+                    if contact := extract_contact({"person": connection}):
+                        matched_contacts.append(contact)
+                        
+            return ContactSearchResults(results=matched_contacts)
+
+@contact_lookup_agent.tool  
+async def lookup_contact( ctx: RunContext[ContactSearchRequest], ) -> ContactSearchResults:
+    """Look up contacts via query using Gmail API"""
+    query = ctx.deps.query
+    return await _lookup_contact(query)
 
 
 
@@ -307,6 +452,8 @@ async def send_email(
             .encode()
         ).decode()
     }
+    
+    # this is for debugging purposes
     message_data = {
         "raw": base64.urlsafe_b64encode(
             f"To: greg.nwosu@gmail.com\n"
@@ -325,9 +472,10 @@ async def send_email(
             print(f"\n\n\n {["*"]*10}\n Email send result: {result}")
             return EmailSendResult(email_sent=True)
 
-from typing import Annotated , TypeVar, Awaitable, Callable, ParamSpec, Any
-from typing import TypeVar, Callable, ParamSpec, Awaitable, Any, cast
 from functools import wraps
+from typing import (Annotated, Any, Awaitable, Callable, ParamSpec, TypeVar,
+                    cast)
+
 from pydantic import BaseModel
 
 # T = TypeVar('T', bound=BaseModel)

@@ -30,7 +30,11 @@ dependencies = [
     "openai-whisper>=20240930",
     "aiohttp>=3.11.11",
     "google-auth>=2.37.0",
-    "google-auth-oauthlib>=1.2.1"
+    "google-auth-oauthlib>=1.2.1",
+    "google-auth-httplib2>=0.2.0",
+    "google-api-python-client>=2.157.0",
+    "phonenumbers>=8.13.52",
+    "pydantic-extra-types>=2.10.1"
 ]
 
 [build-system]
@@ -48,3 +52,12 @@ asyncio_mode = "auto"
 python_functions = ["test_", "it_", "and_", "but_", "they_"]
 python_files = ["test_*.py",]
 testpaths = ["tests",]
+asyncio_default_fixture_loop_scope = "function"
+log_cli = true
+log_cli_level = "WARN"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+
+
+

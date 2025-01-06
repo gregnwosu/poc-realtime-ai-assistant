@@ -30,7 +30,7 @@ from .utils import (
 from .mermaid import generate_diagram
 from .database import get_database_instance
 import re
-from .email_agent import  send_email_to_recipient
+from .email_agent import  find_contact_information, send_email_to_recipient
 
 
 @timeit_decorator
@@ -1568,7 +1568,7 @@ async def create_python_chart(prompt: str, chart_type: str) -> dict:
     """
 
     # Call the LLM to generate the Python code
-    response = chat_prompt(
+    response = await chat_prompt(
         code_generation_prompt, model_name_to_id[ModelName.reasoning_model]
     )
 
@@ -1623,7 +1623,7 @@ function_map = {
     "create_python_chart": create_python_chart,
     "send_email_to_recipient": send_email_to_recipient,
     "shutdown": shutdown,
-    "find_contact": find_contact,
+    "find_contact_information": find_contact_information,
 }
 
 # Tools array for session initialization
@@ -1654,19 +1654,5 @@ tools = [
     build_function_descriptor(run_sql_file),
     build_function_descriptor(send_email_to_recipient),
     build_function_descriptor(shutdown),
-    {
-        "type": "function",
-        "name": "find_contact", 
-        "description": "Search Google Contacts for a contact by name",
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "prompt": {
-                    "type": "string",
-                    "description": "Name or partial name to search for in contacts"
-                }
-            },
-            "required": ["prompt"]
-        }
-    }
+    build_function_descriptor(find_contact_information),
 ]
