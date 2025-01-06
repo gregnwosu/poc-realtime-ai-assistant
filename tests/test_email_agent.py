@@ -91,8 +91,8 @@ async def test_lookup_contact_real():
         async with session.get(list_url, headers=headers, params=list_params) as response:
             list_status = response.status
             list_text = await response.text()
-            logger.info("List contacts status: %d", list_status)
-            logger.info("List contacts response: %s", list_text)
+            # logger.info("List contacts status: %d", list_status)
+            # logger.info("List contacts response: %s", list_text)
             
         # Now try search
         logger.info("Now attempting search...")
@@ -105,15 +105,18 @@ async def test_lookup_contact_real():
         async with session.get(search_url, headers=headers, params=search_params) as response:
             search_status = response.status
             search_text = await response.text()
-            logger.info("Search status: %d", search_status)
-            logger.info("Search response: %s", search_text)
+            # logger.info("Search status: %d", search_status)
+            # logger.info("Search response: %s", search_text)
     
     # Now try the actual function
     logger.info("Testing main lookup function...")
-    result = await _lookup_contact("greg nwosu")
+    result = await _lookup_contact("greg")
     
     # Print results for debugging
     logger.info("Final results: %s", result)
     
     # Basic assertion to force output
-    assert True, "Test complete - check logs"
+    assert len(result.results) > 0, "No results found"
+    
+    
+    

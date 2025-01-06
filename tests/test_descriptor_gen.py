@@ -1,5 +1,5 @@
 from realtime_api_async_python.modules.gen_descriptor import build_function_descriptor   
-from realtime_api_async_python.modules.email_agent import send_email_to_recipient
+from realtime_api_async_python.modules.email_agent import send_email_to_recipient, find_contact_information
 send_email_descriptor = { "type": "function",
     "name": "send_email_to_recipient",
     "description": "Sends an email to the recipient using the Gmail API. And Returns a boolean flag indicating if the email was successfully sent",
@@ -35,3 +35,9 @@ send_email_descriptor = { "type": "function",
     
 def test_create_descriptors():
     assert build_function_descriptor(send_email_to_recipient) ==  send_email_descriptor
+    
+def test_find_contact_descriptors():
+    actual = build_function_descriptor(find_contact_information)
+    print(f"actual: {actual}")
+    assert actual ==  send_email_descriptor
+    
